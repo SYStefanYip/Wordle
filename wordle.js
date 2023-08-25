@@ -1,111 +1,142 @@
-const testWordList = ["apple","plant","tiger","smile","house","dance","brave","earth","ocean","happy","music","light","round","fresh","cloud","horse","magic","amber","burst","dream"];
-let wordList = { valid: [], playable: [] };
+const testWordList = [
+    "apple",
+    "alley",
+    "paper",
+    "melon",
+    "zebra",
+    "books",
+    "cheap",
+];
+
+let wordList = {valid: [], playable: []};
+
 const rating = {
     unknown: 0,
     absent: 1,
     present: 2,
-    correct: 3
-}
+    correct: 3,
+};
+
 function startGame(round) {
+    // 8. load or start the game
     let {
         attemptCount,
-        userAtempts,
+        userAttempts,
         highlightedRows,
         keyboard,
         answer,
-        status
+        status,
     } = loadOrStartGame();
 
+    // 6. stop game if user reached maximum rounds or status is failure or success
     while (attemptCount <= round && status === "in-progress") {
-        let currentGuess = prompt("Guess a five letter word:")
-        if (validateInput(currentGuess)) {
-            console.log(currentGuess)
-            attempt = attempt + 1;
-            userAtempts.push(currentGuess);
+        let currentGuess = prompt("Guess a five letter word: ");
+        // 1. Check if word is in word list
+        if (isInputCorrect(currentGuess)) {
+            // 2. absent (grey), present (yellow), correct (green)
             const highlightedCharacters = getCharactersHighlight(
                 currentGuess,
                 answer
             );
-            highlightedRows.push(highlightedCharacters)
+            highlightedRows.push(highlightedCharacters);
+            // 3. highlight keyboard
             keyboard = updateKeyboardHighlights(
                 keyboard,
                 currentGuess,
                 highlightedCharacters
             );
+            // 4. update status
             status = updateGameStatus(
                 currentGuess,
                 answer,
                 attemptCount,
-                round -1
+                round - 1
             );
+            // 5. Update attempt count
             attemptCount = attemptCount + 1;
+            // 6. save game
             saveGame({
                 attemptCount,
-                userAtempts,
+                userAttempts,
                 highlightedRows,
                 keyboard,
-                status
+                status,
             });
-
-
-        }
-        else {
-            retry(currentGuess)
+        } else {
+            retry(currentGuess);
         }
     }
     if (status === "success") {
-        alert("Bro, you got it Lol!")
+        alert("Congratulations");
     } else {
-        alert(`${word} is not in the word list!`)
+        alert(`The word is ${answer}`);
     }
 }
-function validateInput(word) {
+
+function isInputCorrect(word) {
     return wordList.playable.includes(word) || wordList.valid.includes(word);
 }
- function retry(word) {
-    alert( `${word} is not in the word list!`)
- }
 
- function getCharactersHighlight(word, answer) {
-    const wordSplit = word.split("");
+function retry(word) {
+    alert(`${word} is not in word list`);
+}
+
+function getCharactersHighlight(word, answer) {
+    // 1. split word into characters
+    const charactersArray = word.split("");
     const result = [];
-    wordSplit.forEach((character, index) => {
+
+    // 2. check order of characters
+    charactersArray.forEach((character, index) => {
         if (character === answer[index]) {
+            // 2a. correct = index of word equal index of answer
             result.push("correct");
         } else if (answer.includes(character)) {
-            result.push("present")
+            // 2b. present = if not correct, character is part of answer
+            result.push("present");
         } else {
-            result.push("absent")
+            // 2c. absent = else, it must be absent
+            result.push("absent");
         }
-    });  
-    
+    });
+
     return result;
+}
 
- }
-
- function getKeyboard(){
-    const alphabets = "abcdefghijklmnopqrstuvwxyz".split("")
+function getKeyboard() {
+    const alphabets = "abcdefghijklmnopqrstuvwxyz".split("");
     const entries = [];
-    for (const alphabet of alphabets){
+    for (const alphabet of alphabets) {
         entries.push([alphabet, "unknown"]);
     }
-    return Object.fromEntries(entries)
- }
+    return Object.fromEntries(entries);
+}
 
-function updateKeyboardHighlights(keyboard, userInput, highlightedCharacters){
+function updateKeyboardHighlights(
+    keyboard,
+    currentGuess,
+    highlightedCharacter
+) {
+    // 5a. use currentGuess ("apple") highlightedCharacters (["correct", "present"...])
+    // 5b. compare keyboard["a"] with "correct",
+    // if keyboard status < "correct", update keyboard
     const newKeyboard = Object.assign({}, keyboard);
-    for (let i = 0; i < highlightedCharacter.length; i++){
-        const character = userInput[i];
-        const nextStatus = highlightedCharacter[i];
-        const nextRating = rating[nextStatus];
-        const previousStatus = newKeyboard[character];
-        const previousRating = rating[previousStatus];
-        if (nextRating > previousRating){
+
+    for (let i = 0; i < highlightedCharacter.length; i++) {
+        const character = currentGuess[i]; // R
+        const nextStatus = highlightedCharacter[i]; // absent
+        const nextRating = rating[nextStatus]; // 1
+        const previousStatus = newKeyboard[character]; // unknown
+        const previousRating = rating[previousStatus]; // 0
+
+        if (nextRating > previousRating) {
             newKeyboard[character] = nextStatus;
         }
     }
+
     return newKeyboard;
 }
+
 function updateGameStatus(currentGuess, answer, attemptCount, round) {
     if (currentGuess === answer) {
         return "success";
@@ -117,16 +148,20 @@ function updateGameStatus(currentGuess, answer, attemptCount, round) {
 }
 
 function saveGame(gameState) {
-    window.localStorage.setItem("PREFACE_WORDLE", JSON.stringify(gameState))
+    window.localStorage.setItem("PREFACE_WORDLE", JSON.stringify(gameState));
 }
 
 function getTodaysAnswer() {
+    // Starting point of your game
     const offsetFromDate = new Date(2023, 0, 1).getTime();
+    // Get today
     const today = new Date().getTime();
+    // Calculate ms offset
     const msOffset = today - offsetFromDate;
+    // Calculate how many days has pass
     const daysOffset = msOffset / 1000 / 60 / 60 / 24;
-    const annswerIndex = Math.floor(daysOffset)
-    return wordList.playable[annswerIndex];
+    const answerIndex = Math.floor(daysOffset);
+    return wordList.playable[answerIndex];
 }
 
 function isToday(timestamp) {
@@ -143,159 +178,28 @@ async function loadOrStartGame(debug) {
         .then(json => {
             return json;
         });
+
     let answer;
+
     if (debug) {
         answer = testWordList[0];
     } else {
         answer = getTodaysAnswer();
     }
     const prevGame = JSON.parse(window.localStorage.getItem("PREFACE_WORDLE"));
-    if  (prevGame && isToday(prevGame.timestamp)) {
+
+    if (prevGame && isToday(prevGame.timestamp)) {
         return {
             ...prevGame,
-            answer
-        }
+            answer,
+        };
     }
     return {
         attemptCount: 0,
-        userAtempts: [],
+        userAttempts: [],
         highlightedRows: [],
         keyboard: getKeyboard(),
         answer,
-        status: "in-progress"
+        status: "in-progress",
     };
-
 }
-
- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
